@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TENDO GRAIN MILLERS</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+}
+
+header {
+  background: #2e7d32;
+  color: white;
+  padding: 16px;
+  text-align: center;
+}
+
+.card {
+  background: white;
+  margin: 12px;
+  padding: 16px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  font-size: 16px;
+}
+
+button {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+.hidden { display: none; }
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.logout {
+  background: #b71c1c;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="card" id="loginCard">
+  <h3>Login – TENDO GRAIN MILLERS</h3>
+  <input type="password" id="pin" placeholder="Enter PIN">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<header>
+  <h2>TENDO GRAIN MILLERS</h2>
+  <p id="roleText"></p>
+</header>
+
+<div class="card">
+  <h3>Maize Milled (kg)</h3>
+  <input type="number" id="maizeKg">
+  <button onclick="millMaize()">Mill</button>
+</div>
+
+<div class="card">
+  <h3>Stock</h3>
+  <p>Flour: <strong><span id="flour">0</span> kg</strong></p>
+  <p>Bran: <strong><span id="bran">0</span> kg</strong></p>
+</div>
+
+<div class="card">
+  <h3>Sell Products</h3>
+  <input type="number" id="sellFlourKg" placeholder="Flour sold (kg)">
+  <input type="number" id="flourPrice" placeholder="Price per kg">
+  <input type="number" id="sellBranKg" placeholder="Bran sold (kg)">
+  <input type="number" id="branPrice" placeholder="Price per kg">
+  <button onclick="sell()">Record Sale</button>
+</div>
+
+<!-- OWNER ONLY -->
+<div id="ownerSection" class="hidden">
+
+<div class="card">
+  <h3>Add Expense</h3>
+  <input type="number" id="expenseAmount" placeholder="Amount">
+  <button onclick="addExpense()">Add Expense</button>
+</div>
+
+<div class="card">
+  <h3>Daily Summary</h3>
+  <div class="row"><span>Revenue:</span><strong id="revenue">0</strong></div>
+  <div class="row"><span>Expenses:</span><strong id="expenses">0</strong></div>
+  <hr>
+  <div class="row"><span>Profit:</span><strong id="profit">0</strong></div>
+</div>
+
+<div class="card">
+  <button onclick="exportReport()">📤 Export Daily Report</button>
+</div>
+
+</div>
+
+<div class="card">
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+</div>
+
+<script>
+/* ---------- PINS ---------- */
+const OWNER_PIN = "1234";
+const WORKER_PIN = "0000";
+
+let role = localStorage.getItem("role");
+
+/* ---------- DATE RESET ---------- */
+const today = new Date().toISOString().slice(0,10);
+if (localStorage.getItem("lastDate") !== today) {
+  localStorage.setItem("revenue", 0);
+  localStorage.setItem("expenses", 0);
+  localStorage.setItem("lastDate", today);
+}
+
+/* ---------- DATA ---------- */
+let flourStock = Number(localStorage.getItem("flourStock")) || 0;
+let branStock = Number(localStorage.getItem("branStock")) || 0;
+let revenue = Number(localStorage.getItem("revenue")) || 0;
+let expenses = Number(localStorage.getItem("expenses")) || 0;
+
+/* ---------- LOGIN ---------- */
+if (role) showApp();
+
+function login() {
+  const pin = document.getElementById("pin").value;
+  if (pin === OWNER_PIN) role = "Owner";
+  else if (pin === WORKER_PIN) role = "Worker";
+  else return alert("Wrong PIN");
+
+  localStorage.setItem("role", role);
+  showApp();
+}
+
+function showApp() {
+  document.getElementById("loginCard").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("roleText").innerText = "Logged in as: " + role;
+
+  if (role === "Owner") {
+    document.getElementById("ownerSection").classList.remove("hidden");
+  }
+
+  updateUI();
+}
+
+function logout() {
+  localStorage.removeItem("role");
+  location.reload();
+}
+
+/* ---------- FUNCTIONS ---------- */
+function millMaize() {
+  const kg = Number(document.getElementById("maizeKg").value);
+  if (kg <= 0) return;
+  flourStock += kg * 0.7;
+  branStock += kg * 0.3;
+  save(); updateUI();
+}
+
+function sell() {
+  const fKg = Number(document.getElementById("sellFlourKg").value);
+  const fPrice = Number(document.getElementById("flourPrice").value);
+  const bKg = Number(document.getElementById("sellBranKg").value);
+  const bPrice = Number(document.getElementById("branPrice").value);
+  if (fKg > flourStock || bKg > branStock) return;
+  flourStock -= fKg;
+  branStock -= bKg;
+  revenue += (fKg * fPrice) + (bKg * bPrice);
+  save(); updateUI();
+}
+
+function addExpense() {
+  const amt = Number(document.getElementById("expenseAmount").value);
+  if (amt <= 0) return;
+  expenses += amt;
+  save(); updateUI();
+}
+
+function exportReport() {
+  const text =
+`TENDO GRAIN MILLERS
+Date: ${today}
+
+Flour: ${flourStock} kg
+Bran: ${branStock} kg
+
+Revenue: ${revenue}
+Expenses: ${expenses}
+Profit: ${revenue - expenses}`;
+
+  const blob = new Blob([text], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Daily_Report.txt";
+  a.click();
+}
+
+function save() {
+  localStorage.setItem("flourStock", flourStock);
+  localStorage.setItem("branStock", branStock);
+  localStorage.setItem("revenue", revenue);
+  localStorage.setItem("expenses", expenses);
+}
+
+function updateUI() {
+  document.getElementById("flour").innerText = flourStock.toFixed(1);
+  document.getElementById("bran").innerText = branStock.toFixed(1);
+  document.getElementById("revenue").innerText = revenue.toFixed(2);
+  document.getElementById("expenses").innerText = expenses.toFixed(2);
+  document.getElementById("profit").innerText = (revenue - expenses).toFixed(2);
+}
+</script>
+
+</body>
+</html>
