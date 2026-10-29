@@ -1,0 +1,1 @@
+# TENDO GRAIN MILLERS backend\n\nSupabase powers secure accounts and cloud factory records.\n\n1. Create a Supabase project.\n2. Run supabase-schema.sql in SQL Editor.\n3. Create auth users and profile roles.\n4. Add project URL and anon key to supabase-client.js.\n\nNever expose a service-role key in the app.
